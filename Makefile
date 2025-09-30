@@ -66,7 +66,7 @@ docker-build-git-clean: docker-build-git docker-prune
 
 run:
 	@echo "==> 运行容器: $(IMAGE_FULL) -> http://localhost:3000"
-	docker run --rm -p 3000:3000 $(IMAGE_FULL)
+	docker run -d --name $(IMAGE_NAME)-$(IMAGE_TAG) -p 3000:3000 $(IMAGE_FULL)
 
 clean:
 	@echo "==> 清理构建产物"
