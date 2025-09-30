@@ -1,0 +1,62 @@
+# 从远程 Git 仓库克隆代码并构建的多阶段 Dockerfile
+
+# 基础镜像
+FROM node:18-alpine AS base
+
+# 可配置仓库地址和分支/标签（默认 main）
+ARG REPO_URL="https://github.com/vinglogn/nextjs-demo.git"
+ARG REPO_REF="main"
+
+# 拉取源码阶段：仅负责克隆仓库
+FROM base AS fetch
+RUN apk add --no-cache git ca-certificates
+WORKDIR /src
+RUN git clone --depth=1 --branch ${REPO_REF} ${REPO_URL} /src
+
+# 依赖安装阶段
+FROM base AS deps
+# libc6-compat 兼容层（参考 node:alpine 官方说明）
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+# 只复制 lock 文件加速缓存
+COPY --from=fetch /src/package.json /src/package-lock.json* ./
+RUN npm ci
+
+# 构建阶段
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=fetch /src .
+ENV NEXT_TELEMETRY_DISABLED 1
+RUN npm run build
+
+# 运行阶段（standalone）
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# 创建非 root 用户
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+# 复制构建产物（standalone + static）
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# 若项目未使用 public，可为空目录；如需使用，请改为从 fetch 阶段复制
+RUN mkdir -p ./public
+# 如需包含 public 静态资源，请取消下一行注释（确保仓库存在 public 目录）
+# COPY --from=fetch /src/public ./public
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["node", "server.js"]
+
+
