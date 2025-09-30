@@ -1,7 +1,7 @@
 # 从远程 Git 仓库克隆代码并构建的多阶段 Dockerfile
 
 # 基础镜像
-FROM node:18-alpine AS base
+FROM node:24-alpine AS base
 
 # 可配置仓库地址和分支/标签（默认 main）
 ARG REPO_URL="https://github.com/vinglogn/nextjs-demo.git"
