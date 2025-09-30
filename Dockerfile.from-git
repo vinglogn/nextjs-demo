@@ -9,6 +9,8 @@ ARG REPO_REF="main"
 
 # 拉取源码阶段：仅负责克隆仓库
 FROM base AS fetch
+ARG REPO_URL
+ARG REPO_REF
 RUN apk add --no-cache git ca-certificates
 WORKDIR /src
 RUN git clone --depth=1 --branch ${REPO_REF} ${REPO_URL} /src
